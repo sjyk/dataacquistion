@@ -3,12 +3,13 @@ from gensim.models import ldamodel
 import nltk
 import numpy as np
 from collections import *
+from decimal import *
 
 
 def gen_R(gen_source):
 	bag_o_words=get_bag_of_words(gen_source)
-    delimiters=get_delimiters(gen_source)
-    R_prime=OrderedDict()
+	delimiters=get_delimiters(gen_source)
+	R_prime=OrderedDict()
     #R_prime['source']=gen_source
     # R_prime['delimiters']=delimiters
     # R_prime['bag_o_words']=bag_o_words
@@ -29,7 +30,7 @@ def gen_R(gen_source):
 			R_prime[word][i]=1
 	return R_prime
 
-def gen_V_lda(R_prime,trained_lda=None):
+def gen_V_lda(R_prime,num_topics=10,trained_lda=None):
 	# delimiters=R_prime['delimiters']
 	# bag_o_words=R_prime['bag_o_words']
 	#source=R_prime['source']
@@ -43,7 +44,7 @@ def gen_V_lda(R_prime,trained_lda=None):
 	corpus=[dictionary.doc2bow(text) for text in words]
 
 	lda=ldamodel.LdaModel(corpus,id2word=dictionary,num_topics=100)
-	topics=lda.show_topics(num_words=len(R_prime.keys()),formatted=False)
+	topics=lda.show_topics(num_topics=num_topics,num_words=len(R_prime.keys()),formatted=False)
 	V_prime=OrderedDict()
 	num_topics=len(topics)
 	for word in R_prime.keys():
@@ -63,10 +64,10 @@ def gen_V_keywords(R_prime,prune=True):
 	tagged=nltk.pos_tag(words)
 	pruned_words=[]
 	for tag in tagged:
-		if tag[1]=='NN':
+		if tag[1].find('NN')!=-1:
 			pruned_words.append(tag[0])
 	V_prime={}
-	if !prune:
+	if not prune:
 		for word in words:#not sure about this part ask sanjay if this won't statistically fuck our results
 			V_prime[word]=0
 	for word in pruned_words:
@@ -79,12 +80,13 @@ def get_rank(dictb4mat):
 
 def get_shannon_entropy(dictb4mat):
 	mat=dict2mat(dictb4mat)
-	Hx=np.zeros.reshape((len(dictb4mat.keys()),1))
+	Hx=np.zeros(len(dictb4mat.keys())).reshape((len(dictb4mat.keys()),1))
 	for i,row in enumerate(mat):
 		summed=0
 		normalized=row/row.sum()
-		for item in normalized.nonzero()[0]:
-			summed=item*log(item)
+		print normalized
+		for y in normalized.nonzero()[0]:
+			summed=normalized[y]*float(Decimal(normalized[y]).ln())
 		summed=(0-summed)
 		Hx[i]=summed
 	return Hx
@@ -92,11 +94,11 @@ def get_shannon_entropy(dictb4mat):
 def get_von_neumann_entropy(dictb4mat):
 	mat=dict2mat(dictb4mat)
 	assert mat.shape[0]==mat.shape[1]
-	eigenvalues=np.linalg.eig(mat)
+	eigenvalues=np.linalg.eig(mat)[0]
 	summed=0
 	normalized=eigenvalues/eigenvalues.sum()
-	for eig in normalized.nonzero()[0]:
-		summed=eig*log(eig)
+	for y in normalized.nonzero()[0]:
+		summed=normalized[y]*float(Decimal(normalized[y]).ln())
 	return summed
 
 def get_bag_of_words(source):
