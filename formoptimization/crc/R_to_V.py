@@ -59,6 +59,9 @@ def gen_V_lda(R_prime,num_topics=10,trained_lda=None):
 	# 	topics.append(topic_id)
 	# 	topic_probability.append(topic_prob)
 
+# def gen_V_lda_corpus(R_prime,num_topics=10,trained_lda=None):
+	
+
 def gen_V_keywords(R_prime,prune=True):
 	words=R_prime.keys()
 	tagged=nltk.pos_tag(words)
@@ -84,7 +87,6 @@ def get_shannon_entropy(dictb4mat):
 	for i,row in enumerate(mat):
 		summed=0
 		normalized=row/row.sum()
-		print normalized
 		for y in normalized.nonzero()[0]:
 			summed=normalized[y]*float(Decimal(normalized[y]).ln())
 		summed=(0-summed)
@@ -122,17 +124,17 @@ def delimit_source(source,delimiter):
 	source=source.replace("."," ")
 	source=source.replace(","," ")
 	source=source.replace(";"," ")
-	source=source.replace(":"," ")
+	# source=source.replace(":"," ")
 	source=source.replace('"'," ")
 	source=source.replace(")"," ")
 	source=source.replace("("," ")
 	source=source.replace("{"," ")
 	source=source.replace("}"," ")
-	source=source.replace("<"," ")
-	source=source.replace(">"," ")
+	# source=source.replace("<"," ")
+	# source=source.replace(">"," ")
 	source=source.replace("?"," ")
 	source=source.replace("\\"," ")
-	source=source.replace("/"," ")
+	# source=source.replace("/"," ")
 	source=source.replace("|"," ")
 	return source.split()
 
