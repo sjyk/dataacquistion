@@ -28,9 +28,9 @@ def gen_R(gen_source):
 	for i,word in enumerate(delimitted):
 		if word in R_prime:
 			R_prime[word][i]=1
-	return R_prime
+	return R_prime,len(R_prime.keys())
 
-def gen_V_lda(R_prime,num_topics=10,trained_lda=None):
+def gen_V_lda(R_prime,num_topics=10,trained_lda=None,dictionary=None):
 	# delimiters=R_prime['delimiters']
 	# bag_o_words=R_prime['bag_o_words']
 	#source=R_prime['source']
@@ -40,13 +40,21 @@ def gen_V_lda(R_prime,num_topics=10,trained_lda=None):
 	for key in R_prime.keys():
 		bag_o_words[key]=sum(R_prime[key])
 	words=[[key]*bag_o_words[key] for key in bag_o_words.keys()]
-	dictionary=corpora.Dictionary(words)
-	corpus=[dictionary.doc2bow(text) for text in words]
+	# dictionary=corpora.Dictionary(words)
+	# corpus=[dictionary.doc2bow(text) for text in words]
 
-	lda=ldamodel.LdaModel(corpus,id2word=dictionary,num_topics=100)
-	topics=lda.show_topics(num_topics=num_topics,num_words=len(R_prime.keys()),formatted=False)
+	if trained_lda!=None:
+		assert isinstance(trained_lda,ldamodel.LdaModel)
+		assert isinstance(dictionary,corpora.Dictionary)
+		corpus=[dictionary.doc2bow(text) for text in words]
+		trained_lda.update(corpus)
+		topics=lda.show_topics(num_topics=num_topics,num_words=len(dictionary),formatted=False)
+	else:
+		dictionary=corpora.Dictionary(words)
+		corpus=[dictionary.doc2bow(text) for text in words]
+		lda=ldamodel.LdaModel(corpus,id2word=dictionary,num_topics=100)
+		topics=lda.show_topics(num_topics=num_topics,num_words=len(dictionary),formatted=False)
 	V_prime=OrderedDict()
-	num_topics=len(topics)
 	for word in R_prime.keys():
 		V_prime[word]=[0]*num_topics
 
