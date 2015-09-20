@@ -1,10 +1,11 @@
 import numpy as np
 from operator import itemgetter
 from math import *
+from R_to_V import get_bag_of_words
 
 
 def partition(data):
-	
+	pass
 
 def map_blocks(blocks):
 	covar_mat={}
@@ -14,16 +15,27 @@ def map_blocks(blocks):
 			covar_mat[block][other_block]=calc_covariance(block,other_block)
 	return covar_mat
 
-def filter_edges(edge_dict,threshold=.05):
+def map_blocks_similarity(blocks,word_list):
+	covar_mat={}
+	for block in blocks:
+		covar_mat[block.item]={}
+		for other_block in blocks:
+			if other_block==block:
+				continue
+			covar_mat[block.item][other_block.item]=calc_word_similarity(block,other_block,word_list)
+	return covar_mat
+
+def filter_edges(edge_dict,threshold=lambda x:x<=0):
 	pruned_covar_mat={}
 	for key in edge_dict.keys():
 		pruned_covar_mat[key]={}
 		for other_key in edge_dict[key].keys():
 			edge_weight=edge_dict[key][other_key]
-			if (other_key==key) or (edge_weight<0) or (t_test(edge_weight)>threshold):
+			# if (other_key==key) or (edge_weight<0) or (t_test(edge_weight)>threshold):
+			if (other_key==key) or threshold(edge_weight):
 				continue
 			pruned_covar_mat[key][other_key]=edge_weight
-	return edge_weight
+	return pruned_covar_mat
 
 
 def reduce_blocks(passed_in):
@@ -46,6 +58,28 @@ def map_edges(edges,blocks):
 		for edge in edges[key]:
 			W[key_list[key],key_list[edge]]=edges[key][edge]
 			normalized_edges[key][edge]=(edges[key][edge]/to_normalize)
+
+	return normalized_edges,W
+
+def map_edges_tree(edges,blocks):
+	normalized_edges={}
+	key_list={}
+	blocks=map(lambda x:x.item,blocks)
+	for i,block in enumerate(blocks):
+		key_list[block]=i
+	W=np.zeros((len(blocks),len(blocks)))
+	count=0
+	for key in edges.keys():
+		if key not in blocks:
+			count+=1
+	for key in edges.keys():
+		normalized_edges[key]={}
+		#to_normalize=edges[key]["cumulative weight"]
+		for edge in edges[key].keys():
+			# print key_list[key]
+			# print key_list[edge]
+			W[key_list[key],key_list[edge]]=edges[key][edge]
+		#	normalized_edges[key][edge]=(edges[key][edge]/to_normalize)
 
 	return normalized_edges,W
 
@@ -76,6 +110,16 @@ def calc_covariance(original,other):
 	for i,x in enumerate(original):
 		cov+=(((ord(x)-org_avg)/org_)*((ord(other[i])-other_avg)/other_))
 	return (cov/len(original)-1)
+
+def calc_word_similarity(original,other,word_list):
+	word_dict={}
+	for word in word_list:
+		word_dict[word]=0
+	for word in get_bag_of_words(original.item):
+		word_dict[word]+=1
+	for word in get_bag_of_words(other.item):
+		word_dict[word]+=1
+	return len(filter(lambda x:word_dict[x]==2,word_dict))
 
 def get_average(data):
 	summed=0

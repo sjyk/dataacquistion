@@ -9,10 +9,19 @@ Replace this with more appropriate tests for your application.
 import csv
 from R_to_V import *
 import numpy as np
+from clustering_tree import get_tree
+from ete2 import Tree,TreeStyle
+from clustering_funcs import cluster_spectral_k_means
+import random
+import json
 
 FILENAME='CRC_Survey Monkey_Data.csv'
 SHANNON_FILENAME='shannon.txt'
 RANK_FILENAME='rank.txt'
+TREE_IMG_FILENAME='temptree.png'
+NODE_DICT_FILENAME='tempnodedict.json'
+LOST_DICT_FILENAME='templostdict.json'
+
 # class SimpleTest(TestCase):
 #     def test_basic_addition(self):
 #         """
@@ -57,6 +66,42 @@ def test_rank():
 			rank=rank_r-rank_v
 			
 			result_file.write(str(rank)+"\n")
+
+def test_tree_clustering():
+	result_file=open(TREE_IMG_FILENAME,'wb')
+	p=16.0/600.0
+	with open(FILENAME,'rb') as csvfile:
+		reader=csv.reader(csvfile,delimiter=',',quotechar='"')
+		i=0
+		row_list=[]
+		for row in reader:
+			if random.random()<=p:
+			 	row_string=' '.join(row)
+			 	row_list.append(row_string)
+			 	i+=1
+			 	if i==16:
+			 		break
+			# i+=1
+			# if i>256:
+			# 	break
+			# if i<3:
+			# 	continue
+			# row_string=" ".join(row)
+			# row_list.append(row_string)
+	our_tree,node_dict,lost_dict=get_tree(row_list,cluster_spectral_k_means)
+	our_tree.save_tree_to_file(TREE_IMG_FILENAME)
+	with open(NODE_DICT_FILENAME,'w') as f:
+		json.dump(node_dict,f)
+		f.close()
+
+	with open(LOST_DICT_FILENAME,'w') as f:
+		json.dump(lost_dict,f)
+		f.close()
+	# our_tree.render_tree()
+
+if __name__=='__main__':
+	test_tree_clustering()
+	
 
 
 
