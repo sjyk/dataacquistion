@@ -12,13 +12,14 @@ def cluster_spectral_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:
 		# if isinstance(group.item,list):
 		# 	words=group.item
 		# else:
-		words=get_bag_of_words(','.join(group.item))
+		words=get_bag_of_words(group.item)
+        # print ','.join(group.item)
+
 		# group.item=' '.join(group.item)
 		for word in words:
-			if word=='1':
-				print word
 			word_dict[word]=1
 	word_list=word_dict.keys()
+	# print word_list
 
 	similarity_mat=map_blocks_similarity(groups,word_list)
 	filtered_mat=filter_edges(similarity_mat,threshold)
@@ -28,8 +29,11 @@ def cluster_spectral_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:
 	list_of_points=map(lambda x:Point(x[1].tolist(),groups[x[0]]),enumerate(eigen))
 	print len(groups),' ',len(groups)/4.0, ' ',math.ceil(len(groups)/4.0),' ',int(math.ceil(len(groups)/4.0)),' ',num_groups(groups) 
 
-
-	clusters=map(lambda x:map(lambda y:y.block,x.points),kmeans(list_of_points,num_groups(groups),opt_cutoff))
+	kmean_cluster=kmeans(list_of_points,num_groups(groups),opt_cutoff)
+	clusters=map(lambda x:map(lambda y:y.block,x.points),kmean_cluster)
+	# print map(lambda x:map(lambda y:y.node_name,x),clusters)
+	# print map(lambda x:x.node_name,groups)
+	# print clusters
 	return clusters
 
 
@@ -106,7 +110,7 @@ class Cluster:
         return Point(centroid_coords)
 
 def kmeans(points, k, cutoff):
-    
+    # print k
     # Pick out k random points to use as our initial centroids
     initial = random.sample(points, k)
     
@@ -131,8 +135,6 @@ def kmeans(points, k, cutoff):
         for p in points:
             # Get the distance between that point and the centroid of the first
             # cluster.
-            if clusterCount==0:
-            	IPython.embed()
             smallest_distance = getDistance(p, clusters[0].centroid)
 
         
@@ -166,6 +168,9 @@ def kmeans(points, k, cutoff):
         if biggest_shift < cutoff:
             print "Converged after %s iterations" % loopCounter
             break
+    if len(points)!=sum(map(lambda x:len(x.points),clusters)):
+    	print 'hi'
+    	print clusters
     return clusters
 
 def getDistance(a, b,cluster1=None):

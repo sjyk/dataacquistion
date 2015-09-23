@@ -22,7 +22,9 @@ def map_blocks_similarity(blocks,word_list):
 		for other_block in blocks:
 			if other_block==block:
 				continue
+			# print 'hi'
 			covar_mat[block.item][other_block.item]=calc_word_similarity(block,other_block,word_list)
+	# print covar_mat
 	return covar_mat
 
 def filter_edges(edge_dict,threshold=lambda x:x<=0):
@@ -115,6 +117,7 @@ def calc_word_similarity(original,other,word_list):
 	word_dict={}
 	for word in word_list:
 		word_dict[word]=0
+	# print word_dic
 	for word in get_bag_of_words(original.item):
 		word_dict[word]+=1
 	for word in get_bag_of_words(other.item):

@@ -26,10 +26,11 @@ def get_tree(data,clustering_func,threshold=lambda x:x<=0,cutoff=lambda x:len(x)
 		level_dict[level]=[]
 		for group in clustered:
 			subtrees=[]
-			for doc in group:
+			for doc in group:			
 				subtrees.append(doc)
 
 			intersect=intersection(group,len(clustered))
+			# print intersect
 			if intersect==None:
 				continue
 			lost=intersect[1]
@@ -42,7 +43,7 @@ def get_tree(data,clustering_func,threshold=lambda x:x<=0,cutoff=lambda x:len(x)
 				curr_char=curr_char[:-1]+chr(curr_char_val)
 			level_dict[level].append(lost)
 			return_dict[curr_char]=intersect
-			curr_trees.append(Tree(intersect,subtree=subtrees,node_name=curr_char,lost_vals=lost))
+			curr_trees.append(Tree(' '.join(intersect),subtree=subtrees,node_name=curr_char,lost_vals=lost))
 		level+=1
 	return curr_trees[0],return_dict,level_dict
 
@@ -53,16 +54,17 @@ def perform_clustering(groups,clustering_func,threshold=lambda x:x<=0,num_groups
 
 def intersection(group,cluster_size):
 	temp_dict={}
-	if len(group)==1 and cluster_size!=1:
-		return None
+	# if len(group)==1 and cluster_size!=1:
+	# 	print 'hi'+'\n'*50
+	# 	return None
 	for item in group:
 		if isinstance(item,Tree):
-			for word in item.item:
+			for word in get_bag_of_words(item.item):
 				if word not in temp_dict:
 					temp_dict[word]=0
 				temp_dict[word]+=1
 		else:
-			for word in item:
+			for word in get_bag_of_words(item):
 				if word not in temp_dict:
 					temp_dict[word]=0
 				temp_dict[word]+=1
@@ -161,13 +163,13 @@ class Tree:
 		# 	elif char==')':
 		# 		countright+=1
 		# print countleft,' ',countright
-		print newick
+		# print newick
 		self.newick=ete2.Tree(newick,format=8)
 		ts=ete2.TreeStyle()
 		ts.rotation=90
 		#self.newick.show(tree_style=ts)
 		self.newick.render(filepath,w=500,tree_style=ts)
-		print self.newick
+		# print self.newick
 
 	def render_tree(self):
 		newick=make_newick(self)+';'

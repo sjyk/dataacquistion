@@ -75,21 +75,21 @@ def test_tree_clustering():
 		i=0
 		row_list=[]
 		for row in reader:
-			if random.random()<=p:
-			 	row_string=' '.join(row)
-			 	row_list.append(row_string)
-			 	i+=1
-			 	if i==16:
-			 		break
-			# i+=1
+			# if random.random()<=p:
+			#  	row_string=' '.join(row)
+			#  	row_list.append(row_string)
+			#  	i+=1
+			#  	if i==16:
+			#  		break
+			i+=1
 			# if i>256:
 			# 	break
-			# if i<3:
-			# 	continue
-			# row_string=" ".join(row)
-			# row_list.append(row_string)
+			if i<3:
+				continue
+			row_string=" ".join(row)
+			row_list.append(row_string)
 	our_tree,node_dict,lost_dict=get_tree(row_list,cluster_spectral_k_means)
-	our_tree.save_tree_to_file(TREE_IMG_FILENAME)
+	# our_tree.save_tree_to_file(TREE_IMG_FILENAME)
 	with open(NODE_DICT_FILENAME,'w') as f:
 		json.dump(node_dict,f)
 		f.close()
@@ -97,7 +97,7 @@ def test_tree_clustering():
 	with open(LOST_DICT_FILENAME,'w') as f:
 		json.dump(lost_dict,f)
 		f.close()
-	# our_tree.render_tree()
+	our_tree.render_tree()
 
 if __name__=='__main__':
 	test_tree_clustering()
