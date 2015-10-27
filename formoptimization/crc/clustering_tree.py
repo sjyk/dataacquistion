@@ -3,18 +3,44 @@ import math
 from R_to_V import *
 # import numpy as np
 
+def getnextchars(curr_char):
+	last_char_val=curr_char[-1]
+	if last_char_val=='Z':
+		i=len(curr_char)-1
+		carry=True
+		temp=''
+		while i>=0:
+			ch=curr_char[i]
+			if carry:
+				if ch=='Z':
+					if i==0:
+						temp='AA'+temp
+					else:
+						temp='A'+temp
+				else:
+					carry=False
+					temp=chr(ord(ch)+1)+temp
+			else:
+				temp=ch+temp
+			i-=1
+		return temp
+
+	else:
+		return curr_char[:-1]+chr(ord(last_char_val)+1)	
+
 def get_tree(data,clustering_func,threshold=lambda x:x<=0,cutoff=lambda x:len(x)<=1,num_groups=lambda groups:int(math.ceil(len(groups)/4.0))):
 	curr_trees=[]
 	return_dict={}
 	level_dict={}
 	curr_char=chr(ord('A')-1)
 	for datum in data:
-		curr_char_val=ord(curr_char[-1])
-		if curr_char_val==122:
-			curr_char+='A'
-		else:
-			curr_char_val+=1
-			curr_char=curr_char[:-1]+chr(curr_char_val)
+		# curr_char_val=ord(curr_char[-1])
+		# if curr_char_val==122:
+		# 	curr_char+='A'
+		# else:
+		# 	curr_char_val+=1
+		# 	curr_char=curr_char[:-1]+chr(curr_char_val)
+		curr_char=getnextchars(curr_char)
 		return_dict[curr_char]=datum
 		curr_trees.append(Tree(datum,node_name=curr_char))
 	level=0
@@ -23,7 +49,7 @@ def get_tree(data,clustering_func,threshold=lambda x:x<=0,cutoff=lambda x:len(x)
 		curr_trees=[]
 		#print clustered[0]
 		removed_words=[]
-		level_dict[level]=[]
+		level_dict[level]={}
 		for group in clustered:
 			subtrees=[]
 			for doc in group:			
@@ -35,13 +61,14 @@ def get_tree(data,clustering_func,threshold=lambda x:x<=0,cutoff=lambda x:len(x)
 				continue
 			lost=intersect[1]
 			intersect=intersect[0]
-			curr_char_val=ord(curr_char[-1])
-			if curr_char_val==122:
-				curr_char+='A'
-			else:
-				curr_char_val+=1
-				curr_char=curr_char[:-1]+chr(curr_char_val)
-			level_dict[level].append(lost)
+			curr_char=getnextchars(curr_char)
+			# curr_char_val=ord(curr_char[-1])
+			# if curr_char_val==122:
+			# 	curr_char+='A'
+			# else:
+			# 	curr_char_val+=1
+			# 	curr_char=curr_char[:-1]+chr(curr_char_val)
+			level_dict[level][curr_char]=lost
 			return_dict[curr_char]=intersect
 			curr_trees.append(Tree(' '.join(intersect),subtree=subtrees,node_name=curr_char,lost_vals=lost))
 		level+=1
@@ -103,6 +130,32 @@ def make_newick(treeobject):
 		tempstring+=comma+make_newick(treeobj)
 
 	return '('+tempstring+')'+str(treeobject.node_name)
+
+def make_json(treeobject):
+	toreturn={}
+	toreturn['name']=treeobject.node_name
+	toreturn['data']=treeobject.item
+	toreturn['children']=[]
+	toreturn['lost']=''
+	if treeobject.lost_vals:
+		toreturn['lost']=' '.join(treeobject.lost_vals)
+	if treeobject.subtrees!=None:
+		for subtree in treeobject.subtrees:
+			toreturn['children'].append(make_json(subtree))
+	return toreturn
+	# toreturn='{id : "'+treeobject.node_name+'",'
+	# toreturn+='text : "'+treeobject.item+'",'
+	# toreturn+='state : {opened : boolean,disabled : boolean,selected : boolean},children : ['
+	# if treeobject.subtrees==None:
+	# 	first=True
+	# 	for subtree in treeobject.subtrees:
+	# 		if not first:
+	# 			toreturn+=','
+	# 		toreturn+=make_json(subtree)
+	# 		first=False
+	# return toreturn+']}'
+
+	# return toreturn
 
 class Tree:
 	def __init__(self,entry,subtree=None,node_name='',lost_vals=None):
@@ -187,6 +240,10 @@ class Tree:
 		ts.rotation=90
 		#self.newick.show(tree_style=ts)
 		self.newick.show(tree_style=ts)
+
+	def return_json(self):
+		self.json_=make_json(self)
+		return self.json_
 
 	def update(self,words):
 		toreturn=[]

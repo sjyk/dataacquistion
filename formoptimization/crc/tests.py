@@ -1,3 +1,4 @@
+
 """
 This file demonstrates writing tests using the unittest module. These will pass
 when you run "manage.py test".
@@ -14,6 +15,7 @@ from ete2 import Tree,TreeStyle
 from clustering_funcs import cluster_spectral_k_means
 import random
 import json
+import math
 
 FILENAME='CRC_Survey Monkey_Data.csv'
 SHANNON_FILENAME='shannon.txt'
@@ -98,6 +100,27 @@ def test_tree_clustering():
 		json.dump(lost_dict,f)
 		f.close()
 	our_tree.render_tree()
+
+def get_tree_json(filename=FILENAME,cutoff='lambda x:len(x)<=1',threshold='lambda x:x<=0',gf='lambda groups:int(-(-len(groups)//4.0))'):
+	with open(filename,'rb') as f:
+		reader=csv.reader(f,delimiter=',',quotechar='"')
+		i=0
+		row_list=[]
+		for row in reader:
+			row_string=' '.join(row)
+			row_list.append(row_string)
+	our_tree,node_dict,lost_dict=get_tree(row_list,cluster_spectral_k_means,threshold=eval(threshold),cutoff=eval(cutoff),num_groups=eval(gf))
+	json_=our_tree.return_json()	
+	tempdict={}
+	# tempdict['lost']=lost_dict
+	# tempdict['tree']=json_
+	with open(LOST_DICT_FILENAME,'w') as f:
+		json.dump(lost_dict,f)
+		f.close()
+	with open('THE_TREE.json','w') as f:
+		json.dump(json_,f)
+		f.close()
+	# return json.dumps(tempdict)
 
 if __name__=='__main__':
 	test_tree_clustering()

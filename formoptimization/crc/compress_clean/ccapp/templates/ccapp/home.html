@@ -1,0 +1,31 @@
+<h1>Input relevant parameters</h1>
+
+<form  action="{% url 'ccapp:viewtree' %}" method='post'>
+	{% csrf_token %}
+	<input type='text' name='cutoff_input'/>
+	<label for='cutoff_input'>Cutoff</label>
+	<div></div>
+	<div></div>
+	
+	<input type='text' name='threshold_input'/>
+	<label for='threshold_input'>Threshold</label>
+	<div></div>
+	<div></div>
+	
+	<input type='text' name='file_input'/>
+	<label for='file_input'>file_name</label>
+	<div></div>
+	<div></div>
+	
+	<input type='text' name='clustering_input'/>
+	<label for='clustering_input'>Clustering Function</label>
+	<div></div>
+	<div></div>
+	
+	<input type='text' name='groups_input'/>
+	<label for='groups_input'>Number of groups</label>
+	<div></div>
+	<div></div>
+	
+	<input type='submit' value='viewtree'/>
+</form>

@@ -144,5 +144,6 @@ def delimit_source(source,delimiter):
 	source=source.replace("\\"," ")
 	# source=source.replace("/"," ")
 	source=source.replace("|"," ")
+	source=source.replace("\"",'')
 	return source.split()
 
