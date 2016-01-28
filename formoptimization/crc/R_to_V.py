@@ -30,6 +30,22 @@ def gen_R(gen_source):
 			R_prime[word][i]=1
 	return R_prime,len(R_prime.keys())
 
+def get_lda_dist(lda,data,dict_):
+	# bag_o_words=OrderedDict()
+	# for key in R_prime.keys():
+	# 	bag_o_words[key]=sum(R_prime[key])
+	# words=[[key]*bag_o_words[key] for key in bag_o_words.keys()]
+	# dictionary=corpora.Dictionary(words)
+
+	# corpus=[dictionary.doc2bow(text) for text in words]
+	# lda=ldamodel.LdaModel(corpus,id2word=dictionary,num_topics=100)
+	# # topiclist=lda.get_document_topics()
+	# topiclist=lda[]
+	topiclist=lda[dict_.doc2bow(data)]
+	return topiclist
+	
+
+
 def gen_V_lda(R_prime,num_topics=10,trained_lda=None,dictionary=None):
 	# delimiters=R_prime['delimiters']
 	# bag_o_words=R_prime['bag_o_words']
@@ -113,6 +129,10 @@ def get_von_neumann_entropy(dictb4mat):
 
 def get_bag_of_words(source):
 	return delimit_source(source,"")
+
+def get_bag_of_actions(source):
+	"""TODO still"""
+	pass
 
 def get_delimiters(source):
 	pass

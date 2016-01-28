@@ -20,13 +20,19 @@ def cluster_spectral_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:
 			word_dict[word]=1
 	word_list=word_dict.keys()
 	# print word_list
+	for i,group in enumerate(groups):
+		if group==None:
+			print i
 
 	similarity_mat=map_blocks_similarity(groups,word_list)
 	filtered_mat=filter_edges(similarity_mat,threshold)
 	W=map_edges_tree(filtered_mat,groups)[1]
 	laplacian=get_laplacian(W)
 	eigen=calc_eigen(laplacian,num_dims)
-	list_of_points=map(lambda x:Point(x[1].tolist(),groups[x[0]]),enumerate(eigen))
+	# with open("tempy.txt","w") as f:
+	# 	f.write(str(eigen))
+	# print len(eigen)
+	list_of_points=map(lambda x:Point(x[1].tolist(),groups[x[0]],x),enumerate(eigen))
 	print len(groups),' ',len(groups)/4.0, ' ',math.ceil(len(groups)/4.0),' ',int(math.ceil(len(groups)/4.0)),' ',num_groups(groups) 
 
 	kmean_cluster=kmeans(list_of_points,num_groups(groups),opt_cutoff)
@@ -36,13 +42,45 @@ def cluster_spectral_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:
 	# print clusters
 	return clusters
 
+def cluster_segmentation_data_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:int(math.ceil(len(x)/4.0)),num_dims=2,opt_cutoff=.5):
+    pass
+
+def binary_segmentation_cluster(groups,threshold=lambda x:x<=0,num_groups=None,num_dims=2,opt_cutoff):
+    pair=get_lowest_ed_pair(groups)
+    groups.remove(pair[0])
+    groups.remove(pair[1])
+    return [pair]+map(lambda x:[x],groups)
+
+def get_lowest_ed_pair(groups):
+    pass
+
+def edit_distance(c1,c2):
+    mat=np.zeros((len(c1.item)+1,len(c2.item)+1))
+    i=0
+    j=0
+    while i<=len(c1.item):
+        while j<=len(c2.item):
+            if i==0:
+                if j==0:
+                    continue
+                mat[i,j]=mat[i,j-1]+1
+            elif j==0:
+                mat[i,j]=mat[i-1,j]+1
+            else:
+                if c1.item[i-1]==c2.item[j-1]:
+                    diff=0
+                else:
+                    diff=1
+                mat[i,j]=min(mat[i,j-1]+1,mat[i-1,j]+1,mat[i-1,j-1]+diff)
+    return mat[len(c1.item),len(c2.item)]
+
 
 
 class Point:
     '''
     An point in n dimensional space
     '''
-    def __init__(self, coords,block=None):
+    def __init__(self, coords,block=None,tempy=None):
         '''
         coords - A list of values, one per dimension
         '''
@@ -50,6 +88,9 @@ class Point:
         self.coords = coords
         self.n = len(coords)
         self.block=block
+        self.deb=tempy
+        if tempy==None:
+            print 'bi'
         
     def __repr__(self):
         return str(self.coords)
@@ -92,6 +133,7 @@ class Cluster:
         old_centroid = self.centroid
         self.points = points
         self.centroid = self.calculateCentroid()
+        print 'update'
         shift = getDistance(old_centroid, self.centroid,self) 
         return shift
     
@@ -106,14 +148,15 @@ class Cluster:
         unzipped = zip(*coords)
         # Calculate the mean for each dimension
         centroid_coords = [math.fsum(dList)/numPoints for dList in unzipped]
-        
+        if centroid_coords==[]:
+            print coords
         return Point(centroid_coords)
 
 def kmeans(points, k, cutoff):
     # print k
     # Pick out k random points to use as our initial centroids
     initial = random.sample(points, k)
-    
+    print initial
     # Create k clusters using those centroids
     clusters = [Cluster([p]) for p in initial]
     # print points
@@ -145,7 +188,7 @@ def kmeans(points, k, cutoff):
             for i in range(clusterCount - 1):
                 # calculate the distance of that point to each other cluster's
                 # centroid.
-                distance = getDistance(p, clusters[i+1].centroid)
+                distance = getDistance(p, clusters[i+1].centroid,cnum=i+1)
                 # If it's closer to that cluster's centroid update what we
                 # think the smallest distance is, and set the point to belong
                 # to that cluster
@@ -160,6 +203,8 @@ def kmeans(points, k, cutoff):
         # As many times as there are clusters ...
         for i in range(clusterCount):
             # Calculate how far the centroid moved in this iteration
+            if lists[i]==[]:
+                continue
             shift = clusters[i].update(lists[i])
             # Keep track of the largest move from all cluster centroid updates
             biggest_shift = max(biggest_shift, shift)
@@ -173,14 +218,25 @@ def kmeans(points, k, cutoff):
     	print clusters
     return clusters
 
-def getDistance(a, b,cluster1=None):
+def getDistance(a, b,cluster1=None,cnum=0,lc=0):
     '''
     Euclidean distance between two n-dimensional points.
     Note: This can be very slow and does not scale well
     '''
     if a.n != b.n:
     	print a.n,' ',b.n
+        print a.deb,' ',b.deb
+        if a.n==0:
+            print a.coords
+            print a.block
+            # print a.deb
+        else:
+            print b.coords
+            print b.block
+            # print b.deb
     	print cluster1.points
+        print cnum
+        print lc
         raise Exception("ILLEGAL: non comparable points")
     
     ret = reduce(lambda x,y: x + pow((a.coords[y]-b.coords[y]), 2),range(a.n),0.0)

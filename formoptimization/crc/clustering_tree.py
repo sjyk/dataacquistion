@@ -1,7 +1,8 @@
 import ete2
 import math
 from R_to_V import *
-# import numpy as np
+import numpy as np
+from itertools import product
 
 def getnextchars(curr_char):
 	last_char_val=curr_char[-1]
@@ -28,7 +29,7 @@ def getnextchars(curr_char):
 	else:
 		return curr_char[:-1]+chr(ord(last_char_val)+1)	
 
-def get_tree(data,clustering_func,threshold=lambda x:x<=0,cutoff=lambda x:len(x)<=1,num_groups=lambda groups:int(math.ceil(len(groups)/4.0))):
+def get_tree(data,clustering_func,intersect_meth=intersection,threshold=lambda x:x<=0,cutoff=lambda x:len(x)<=1,num_groups=lambda groups:int(math.ceil(len(groups)/4.0))):
 	curr_trees=[]
 	return_dict={}
 	level_dict={}
@@ -55,7 +56,7 @@ def get_tree(data,clustering_func,threshold=lambda x:x<=0,cutoff=lambda x:len(x)
 			for doc in group:			
 				subtrees.append(doc)
 
-			intersect=intersection(group,len(clustered))
+			intersect=intersect_meth(group,len(clustered))
 			# print intersect
 			if intersect==None:
 				continue
@@ -100,6 +101,103 @@ def intersection(group,cluster_size):
 	lost_words=[item for item in temp_dict if temp_dict[item]<group_size]
 	# return apply_update(group,intersection_words)
 	return intersection_words,lost_words
+
+def robo_data_intersection(group,cluster_size):
+	temp_dict={}
+	for item in group:
+		if isinstance(item,Tree):
+			for action in get_bag_of_actions(item.item):
+				if action not in temp_dict:
+					temp_dict[action]=0
+				temp_dict[action]+=1
+		else:
+			for action in get_bag_of_actions(item):
+				if action not in temp_dict:
+					temp_dict[action]=0
+				temp_dict[action]+=1
+	group_size=len(group)
+	intersection_words=[item for item in temp_dict if temp_dict[item]>=group_size]
+	lost_words=[item for item in temp_dict if temp_dict[item]<group_size]
+	# return apply_update(group,intersection_words)
+	return intersection_words,lost_words
+
+def LCS_binary_intersect(group,cluster_size):
+	if cluster_size==1:
+		return group[0].item,[]
+	elif cluster_size==2:
+		seq,lost=run_LCS(group)
+		return seq,lost
+	else:
+		return None,None
+
+def run_LCS(group):
+	mat=np.zeros(tuple(map(lambda x:len(x.item)+1,group)))
+	arrs=map(lambda x:xrange(len(x.item)+1),group)
+	the_gen=product(*arrs)
+	group_len=len(group)
+	origin=[0]*group_len
+	set_mat(mat,origin,[""])
+	for index in the_gen:
+		if index==origin:
+			continue
+		equal=True
+		eq_val=None
+		max_=float('-inf')
+		maxval=None
+		for x,i in enumerate(index):
+			if i==0:
+				equal=False
+				continue
+			if equal:
+				if eq_val==None:
+					eq_val=group[x][i-1]
+				elif eq_val!=group[x][i-1]
+					equal=False
+		#check splicing
+			sp=index[:x]+[i-1]+index[x+1]	
+			val=get_mat(mat,sp)
+			if max_<len(val)+1:
+				maxval=val
+		if equal:
+			sp=map(lambda x:x-1,index)
+			val=get_mat(mat,sp)
+			if max_<len(val)+1:
+				maxval=val
+
+		set_mat(mat,index,maxval)
+	return get_mat(mat,map(lambda x:len(x.item),group))
+
+
+def get_mat(mat,index):
+	tv=mat
+	for i in index:
+		tv=tv[i]
+	return tv
+
+def set_mat(mat,index,val):
+	tv=mat
+	for x,i in enumerate(index):
+		if x==len(index)-1:
+			tv[i]=val
+		else:
+			tv=tv[i]
+
+def LCS_backtrack(mat):
+	pass
+
+
+class Null_string:
+	def __init__(self):
+		pass
+	def __eq__(self,other):
+		if isinstance(other,Null_string):
+			return True
+		return False
+
+	def __str__(self):
+		return '_'
+	def __repr__(self):
+		return '_'
 
 def apply_update(group,words):
 	new_group=[]
