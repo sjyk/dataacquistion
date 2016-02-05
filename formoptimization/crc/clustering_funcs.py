@@ -4,6 +4,8 @@ from spectral_clustering import *
 import random
 import math
 import IPython
+from itertools import combinations
+import numpy as np
 
 
 def cluster_spectral_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:int(math.ceil(len(x)/4.0)),num_dims=2,opt_cutoff=.5):
@@ -43,37 +45,151 @@ def cluster_spectral_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:
 	return clusters
 
 def cluster_segmentation_data_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:int(math.ceil(len(x)/4.0)),num_dims=2,opt_cutoff=.5):
+        
+
     pass
 
-def binary_segmentation_cluster(groups,threshold=lambda x:x<=0,num_groups=None,num_dims=2,opt_cutoff):
-    pair=get_lowest_ed_pair(groups)
+def relational_cluster(groups,garbage_threshold,similarity_metric=lambda x,y,match:edit_distance(x,y,match),element_thresh=0,group_thresh=0,num_clusters=1,num_groups=1,point_thresh=None,match=lambda x,y:x==y):
+    
+    G=map(lambda i:GROUP(set([i[0]])),enumerate(groups))
+    column_similarity=get_col_sim(groups,similarity_metric,point_thresh,match)
+    while len(G)>num_clusters:
+        pair=get_max_auto_sim(G,column_similarity,group_thresh,element_thresh)
+        if pair ==None:
+            break
+        else:
+            G.remove(pair[0])
+            G.remove(pair[1])
+            G.append(pair[0].merge(pair[1]))
+    
+    return [retrieve_cluster_from_indices(groups,x.subtrees) for x in G]
+
+def retrieve_cluster_from_indices(groups, set_o_indices):
+    return [groups[i] for i in set_o_indices]
+
+def get_col_sim(groups,sim_metric,point_thresh,match):
+    len_=len(groups)
+    ed_mat=np.zeros((len_,len_))
+    for i in range(len_):
+        for j in range(len_):
+            if point_thresh==None:
+                ed_mat[i,j]=sim_metric(groups[i],groups[j],match=match)
+            else:
+                ed_mat[i,j]=sim_metric(groups[i],groups[j],match=lambda x,y:match(x,y,thresh=point_thresh))
+    col_sim=np.zeros((len_,len_))
+    for i in range(len_):
+        for j in range(len_):
+            sum_=0
+            for k in range(len_):
+                sum_+=abs(ed_mat[i,k]-ed_mat[j,k])/len_
+            col_sim[i,j]=1-sum_
+    return col_sim
+
+def get_max_auto_sim(G,col_sim,g_thresh,e_thresh):
+    combs=list(combinations(G,2))
+
+    while len(combs)>0:
+        max_=float('-inf')
+        maxval=None
+        for comb in combs:
+            val=auto_sim(comb[0],comb[1],col_sim)
+            if val>max_:
+                max_=val
+                maxval=comb
+        if max_<=g_thresh:
+            combs.remove(maxval)
+        elif not check_elem(maxval,e_thresh,col_sim):
+            combs.remove(maxval)
+        else:
+            return maxval
+
+    return None
+
+def check_elem(val,e_thresh,col_sim):
+    temp=val[0].merge(val[1]).subtrees
+    for i,j in combinations(temp,2):
+        if col_sim[i,j]<=e_thresh:
+            return False
+    return True
+
+def auto_sim(v1,v2,col_sim):
+    temp=v1.merge(v2).subtrees
+    len_=len(temp)
+    sum_=0
+    for i,j in combinations(temp,2):
+        sum_+=col_sim[i,j]
+
+    return 2*(len_-1)*sum_/len_
+
+def binary_segmentation_cluster(groups,threshold=lambda x:x<=0,num_groups=None,num_dims=2,match=lambda x,y:x==y):
+    pair=get_lowest_ed_pair(groups,match)
     groups.remove(pair[0])
     groups.remove(pair[1])
+    # return [pair]+map(lambda x:Tree(x.item,subtree=[x]),groups)
     return [pair]+map(lambda x:[x],groups)
 
-def get_lowest_ed_pair(groups):
-    pass
+def get_lowest_ed_pair(groups,match=lambda x,y:x==y):
+    gen=combinations(groups,2)
+    min_=float('inf')
+    mv=None
+    for pair in gen:
 
-def edit_distance(c1,c2):
+        val=edit_distance(pair[0],pair[1],match)
+        if val<min_:
+            min_=val
+            mv=pair
+    return mv
+
+def edit_distance(c1,c2,match=lambda x,y:x==y):
     mat=np.zeros((len(c1.item)+1,len(c2.item)+1))
     i=0
     j=0
     while i<=len(c1.item):
         while j<=len(c2.item):
+            # print i,j
             if i==0:
                 if j==0:
+                    j+=1
                     continue
                 mat[i,j]=mat[i,j-1]+1
             elif j==0:
                 mat[i,j]=mat[i-1,j]+1
             else:
-                if c1.item[i-1]==c2.item[j-1]:
+                if match(c1.item[i-1],c2.item[j-1]):
                     diff=0
                 else:
                     diff=1
                 mat[i,j]=min(mat[i,j-1]+1,mat[i-1,j]+1,mat[i-1,j-1]+diff)
-    return mat[len(c1.item),len(c2.item)]
+            j+=1
+        i+=1
+    return mat[-1,-1]
 
+def EDR_match(c1,c2,thresh=0):
+    return 0 if abs(c1.x-c2.x)<=thresh and abs(c1.y-c2.y)<=thresh else 1
+
+def DTW(c1,c2,dist=lambda x,y:abs(x-y)):
+    mat=np.zeros((len(c1.item)+1,len(c2.item)+1))
+    for i in xrange(1,len(c1.item)+1):
+        mat[i,0]=float('inf')
+    for i in xrange(1,len(c2.item)+1):
+        mat[0,i]=float('inf')
+    mat[0,0]=0
+    for i in xrange(1,len(c1.item)+1):
+        for j in xrange(1,len(c2.item)+1):
+            cost=dist(c1.item[i-1],c2.item[j-1])
+            mat[i,j]=cost+min(mat[i-1,j],mat[i,j-1],mat[i-1,j-1])
+
+    return mat[-1,-1]
+
+
+
+
+class GROUP:
+    def __init__(self,subtrees):
+        self.subtrees=subtrees
+    
+    def merge(self,g2):
+        return GROUP(self.subtrees|g2.subtrees)
 
 
 class Point:

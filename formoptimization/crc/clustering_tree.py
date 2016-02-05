@@ -4,6 +4,7 @@ from R_to_V import *
 import numpy as np
 from itertools import product
 
+
 def getnextchars(curr_char):
 	last_char_val=curr_char[-1]
 	if last_char_val=='Z':
@@ -29,7 +30,7 @@ def getnextchars(curr_char):
 	else:
 		return curr_char[:-1]+chr(ord(last_char_val)+1)	
 
-def get_tree(data,clustering_func,intersect_meth=intersection,threshold=lambda x:x<=0,cutoff=lambda x:len(x)<=1,num_groups=lambda groups:int(math.ceil(len(groups)/4.0))):
+def get_tree(data,clustering_func,intersect_meth=lambda x,y:intersection(x,y),threshold=lambda x:x<=0,cutoff=lambda x:len(x)<=1,num_groups=lambda groups:int(math.ceil(len(groups)/4.0)),join=False):
 	curr_trees=[]
 	return_dict={}
 	level_dict={}
@@ -46,6 +47,7 @@ def get_tree(data,clustering_func,intersect_meth=intersection,threshold=lambda x
 		curr_trees.append(Tree(datum,node_name=curr_char))
 	level=0
 	while not cutoff(curr_trees):#set stop depth with function
+		print len(curr_trees)
 		clustered=perform_clustering(curr_trees,clustering_func,threshold,num_groups)
 		curr_trees=[]
 		#print clustered[0]
@@ -55,13 +57,14 @@ def get_tree(data,clustering_func,intersect_meth=intersection,threshold=lambda x
 			subtrees=[]
 			for doc in group:			
 				subtrees.append(doc)
-
+			print group
 			intersect=intersect_meth(group,len(clustered))
 			# print intersect
 			if intersect==None:
 				continue
 			lost=intersect[1]
 			intersect=intersect[0]
+			print intersect
 			curr_char=getnextchars(curr_char)
 			# curr_char_val=ord(curr_char[-1])
 			# if curr_char_val==122:
@@ -71,7 +74,10 @@ def get_tree(data,clustering_func,intersect_meth=intersection,threshold=lambda x
 			# 	curr_char=curr_char[:-1]+chr(curr_char_val)
 			level_dict[level][curr_char]=lost
 			return_dict[curr_char]=intersect
-			curr_trees.append(Tree(' '.join(intersect),subtree=subtrees,node_name=curr_char,lost_vals=lost))
+			if join:
+				curr_trees.append(Tree(' '.join(intersect),subtree=subtrees,node_name=curr_char,lost_vals=lost))
+			else:
+				curr_trees.append(Tree(intersect,subtree=subtrees,node_name=curr_char,lost_vals=lost))
 		level+=1
 	return curr_trees[0],return_dict,level_dict
 
@@ -122,6 +128,7 @@ def robo_data_intersection(group,cluster_size):
 	return intersection_words,lost_words
 
 def LCS_binary_intersect(group,cluster_size):
+	cluster_size=len(group)
 	if cluster_size==1:
 		return group[0].item,[]
 	elif cluster_size==2:
@@ -130,15 +137,30 @@ def LCS_binary_intersect(group,cluster_size):
 	else:
 		return None,None
 
+def LCS_intersect(group,cluster_size):
+	cluster_size=len(group)
+	if cluster_size==1:
+		return group[0].item,[]
+	elif cluster_size==0:
+		return None,None
+	else:
+		seq,lost=run_LCS(group)
+		return seq,lost
+	
+
+
 def run_LCS(group):
 	mat=np.zeros(tuple(map(lambda x:len(x.item)+1,group)))
 	arrs=map(lambda x:xrange(len(x.item)+1),group)
 	the_gen=product(*arrs)
 	group_len=len(group)
 	origin=[0]*group_len
-	set_mat(mat,origin,[""])
+	val_list=[]
+	set_mat(mat,origin,[Null_string()],val_list)
+	i=0
 	for index in the_gen:
-		if index==origin:
+		if i==0:
+			i+=1
 			continue
 		equal=True
 		eq_val=None
@@ -150,35 +172,42 @@ def run_LCS(group):
 				continue
 			if equal:
 				if eq_val==None:
-					eq_val=group[x][i-1]
-				elif eq_val!=group[x][i-1]
+					eq_val=group[x].item[i-1]
+				elif eq_val!=group[x].item[i-1]:
 					equal=False
 		#check splicing
-			sp=index[:x]+[i-1]+index[x+1]	
-			val=get_mat(mat,sp)
+			if x!=group_len-1:
+				sp=index[:x]+tuple([i-1])+index[x+1:]	
+			else:
+				sp=index[:x]+tuple([i-1])
+			val=get_mat(mat,sp,val_list)
 			if max_<len(val)+1:
 				maxval=val
 		if equal:
 			sp=map(lambda x:x-1,index)
-			val=get_mat(mat,sp)
-			if max_<len(val)+1:
-				maxval=val
+			val=get_mat(mat,sp,val_list)
+			if max_<=len(val)+1:
+				maxval=val+[eq_val]
 
-		set_mat(mat,index,maxval)
-	return get_mat(mat,map(lambda x:len(x.item),group))
+		set_mat(mat,index,maxval,val_list)
+		i+=1
+	
+	return get_mat(mat,map(lambda x:len(x.item),group),val_list)[1:],None
 
 
-def get_mat(mat,index):
+def get_mat(mat,index,val_list):
 	tv=mat
+
 	for i in index:
 		tv=tv[i]
-	return tv
+	return val_list[int(tv)]
 
-def set_mat(mat,index,val):
+def set_mat(mat,index,val,val_list):
 	tv=mat
 	for x,i in enumerate(index):
 		if x==len(index)-1:
-			tv[i]=val
+			val_list.append(val)
+			tv[i]=len(val_list)-1
 		else:
 			tv=tv[i]
 
