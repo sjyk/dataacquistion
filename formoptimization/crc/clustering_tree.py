@@ -3,7 +3,7 @@ import math
 from R_to_V import *
 import numpy as np
 from itertools import product
-
+from clustering_funcs import get_lowest_ed_pair
 
 def getnextchars(curr_char):
 	last_char_val=curr_char[-1]
@@ -30,41 +30,61 @@ def getnextchars(curr_char):
 	else:
 		return curr_char[:-1]+chr(ord(last_char_val)+1)	
 
-def get_tree(data,clustering_func,intersect_meth=lambda x,y:intersection(x,y),threshold=lambda x:x<=0,cutoff=lambda x:len(x)<=1,num_groups=lambda groups:int(math.ceil(len(groups)/4.0)),join=False):
+def get_tree(data,clustering_func,intersect_meth=lambda x,y:intersection(x,y),threshold=lambda x:x<=0,cutoff=lambda x:len(x)<=1,num_groups=lambda groups:int(math.ceil(len(groups)/4.0)),join=False,names=None):
 	curr_trees=[]
 	return_dict={}
 	level_dict={}
 	curr_char=chr(ord('A')-1)
-	for datum in data:
+	for i,datum in enumerate(data):
 		# curr_char_val=ord(curr_char[-1])
 		# if curr_char_val==122:
 		# 	curr_char+='A'
 		# else:
 		# 	curr_char_val+=1
 		# 	curr_char=curr_char[:-1]+chr(curr_char_val)
-		curr_char=getnextchars(curr_char)
-		return_dict[curr_char]=datum
-		curr_trees.append(Tree(datum,node_name=curr_char))
+		# curr_char=getnextchars(curr_char)
+		# return_dict[curr_char]=datum
+		if names:
+			temp=names[i]
+			print temp
+			curr_char=getnextchars(curr_char)
+			return_dict[curr_char]=[temp]+datum
+			curr_trees.append(Tree(datum,node_name=curr_char))
+			
+		else:
+			curr_char=getnextchars(curr_char)
+			return_dict[curr_char]=datum
+			curr_trees.append(Tree(datum,node_name=curr_char))
+
+
 	level=0
-	while not cutoff(curr_trees):#set stop depth with function
-		print len(curr_trees)
+	while True :#set stop depth with function
+		print 'cluster_lvl: '+str(level)
 		clustered=perform_clustering(curr_trees,clustering_func,threshold,num_groups)
 		curr_trees=[]
 		#print clustered[0]
 		removed_words=[]
 		level_dict[level]={}
+		no_root=True
 		for group in clustered:
+			# print len(group)
+			if len(group)==1:
+				# curr_trees.append(group[0])
+				curr_char=getnextchars(curr_char)
+				curr_trees.append(Tree(group[0].item,subtree=group,node_name=getnextchars(curr_char)))
+				continue
+			no_root=False
 			subtrees=[]
 			for doc in group:			
 				subtrees.append(doc)
-			print group
+			# print group
 			intersect=intersect_meth(group,len(clustered))
 			# print intersect
 			if intersect==None:
 				continue
 			lost=intersect[1]
 			intersect=intersect[0]
-			print intersect
+			# print intersect
 			curr_char=getnextchars(curr_char)
 			# curr_char_val=ord(curr_char[-1])
 			# if curr_char_val==122:
@@ -78,6 +98,22 @@ def get_tree(data,clustering_func,intersect_meth=lambda x,y:intersection(x,y),th
 				curr_trees.append(Tree(' '.join(intersect),subtree=subtrees,node_name=curr_char,lost_vals=lost))
 			else:
 				curr_trees.append(Tree(intersect,subtree=subtrees,node_name=curr_char,lost_vals=lost))
+		
+		if no_root or cutoff(curr_trees):
+
+			if len(curr_trees)==1:
+				break
+			curr_char=getnextchars(curr_char)
+			intersect=intersect_meth(curr_trees,len(curr_trees))
+			lost=intersect[1]
+			intersect=intersect[0]
+			level_dict[level]['0_unrooted']=lost
+			return_dict['0_unrooted']=intersect
+			if join:
+				curr_trees=[(Tree(' '.join(intersect),subtree=curr_trees,node_name='0_unrooted',lost_vals=lost))]
+			else:
+				curr_trees=[(Tree(intersect,subtree=curr_trees,node_name='0_unrooted',lost_vals=lost))]
+			break
 		level+=1
 	return curr_trees[0],return_dict,level_dict
 
@@ -144,9 +180,19 @@ def LCS_intersect(group,cluster_size):
 	elif cluster_size==0:
 		return None,None
 	else:
-		seq,lost=run_LCS(group)
+		seq,lost=run_greedy_LCS(group)
 		return seq,lost
-	
+
+def run_greedy_LCS(group):	
+	tempgroup=list(group)
+	while len(tempgroup)>1:
+		pair=get_lowest_ed_pair(tempgroup)
+		tempgroup.remove(pair[0])
+		tempgroup.remove(pair[1])
+		seq=run_LCS(pair)[0]
+		tempgroup.append(Tree(seq))
+
+	return tempgroup[0].item,None
 
 
 def run_LCS(group):
@@ -181,12 +227,16 @@ def run_LCS(group):
 			else:
 				sp=index[:x]+tuple([i-1])
 			val=get_mat(mat,sp,val_list)
-			if max_<len(val)+1:
+			if maxval==None:
+				maxval=val
+			elif len(maxval)<len(val):
 				maxval=val
 		if equal:
 			sp=map(lambda x:x-1,index)
 			val=get_mat(mat,sp,val_list)
-			if max_<=len(val)+1:
+			if maxval==None:
+				maxval
+			elif len(maxval)<=len(val)+1:
 				maxval=val+[eq_val]
 
 		set_mat(mat,index,maxval,val_list)
@@ -194,25 +244,103 @@ def run_LCS(group):
 	
 	return get_mat(mat,map(lambda x:len(x.item),group),val_list)[1:],None
 
+def run_LCS_length(group):
+	mat=np.zeros(tuple(map(lambda x:len(x.item)+1,group)))
+	arrs=map(lambda x:xrange(len(x.item)+1),group)
+	the_gen=product(*arrs)
+	group_len=len(group)
+	origin=[0]*group_len
+	
+	set_mat(mat,origin,0)
+	i=0
+	for index in the_gen:
+		if i==0:
+			i+=1
+			continue
+		equal=True
+		eq_val=None
+		max_=float('-inf')
+		maxval=None
+		for x,i in enumerate(index):
+			if i==0:
+				equal=False
+				continue
+			if equal:
+				if eq_val==None:
+					eq_val=group[x].item[i-1]
+				elif eq_val!=group[x].item[i-1]:
+					equal=False
+		#check splicing
+			if x!=group_len-1:
+				sp=index[:x]+tuple([i-1])+index[x+1:]	
+			else:
+				sp=index[:x]+tuple([i-1])
+			val=get_mat(mat,sp)
+			maxval=max(maxval,val)
+		if equal:
+			sp=map(lambda x:x-1,index)
+			val=get_mat(mat,sp)
+			maxval=max(maxval,val+1)
 
-def get_mat(mat,index,val_list):
+		set_mat(mat,index,maxval)
+		i+=1
+	
+	return LCS_backtrack(mat,group),None
+
+
+def get_mat(mat,index,val_list=None):
 	tv=mat
 
 	for i in index:
 		tv=tv[i]
+	if val_list==None:
+		return tv
 	return val_list[int(tv)]
 
-def set_mat(mat,index,val,val_list):
+def set_mat(mat,index,val,val_list=None):
 	tv=mat
 	for x,i in enumerate(index):
 		if x==len(index)-1:
-			val_list.append(val)
-			tv[i]=len(val_list)-1
+			if val_list==None:
+				tv[i]=val
+			else:
+				val_list.append(val)
+				tv[i]=len(val_list)-1
 		else:
 			tv=tv[i]
 
-def LCS_backtrack(mat):
-	pass
+def LCS_backtrack(mat,group):
+	index=map(lambda x:len(x.item),group)
+	length=get_mat(mat,index)
+	rtn=[]
+	while 0 not in index:
+		equal=True
+		eq_val=None
+		for x,i in enumerate(index):
+			if eq_val==None:
+				eq_val=group[x].item[i-1]
+			elif eq_val!=group[x].item[i-1]:
+				equal=False
+				break
+		if equal:
+			rtn=[eq_val]+rtn
+			index=map(lambda x:x-1,index)
+		else:
+			val_=0
+			mv=None
+			w=0
+			while w<len(index):
+				if w==len(index)-1:
+					sp=index[:w]+[index[w]-1]
+				else:
+					sp=index[:w]+[index[w]-1]+index[w+1:]
+				tv=get_mat(mat,sp)
+				if tv>val_:
+					val=tv
+					mv=sp
+			index=mv
+
+	return rtn
 
 
 class Null_string:
@@ -326,7 +454,7 @@ class Tree:
 
 	def visualize(self,savepath='tree.txt',write_perm='False'):
 		newick=make_newick(self)+';'
-		self.newick=ete2.Tree(newick,format=8)
+		self.newick=ete2.Tree(newick,format=1)
 		print self.newick
 		if write_perm:
 			f=open(savepath,'w')
@@ -344,7 +472,7 @@ class Tree:
 		# 		countright+=1
 		# print countleft,' ',countright
 		# print newick
-		self.newick=ete2.Tree(newick,format=8)
+		self.newick=ete2.Tree(newick,format=1)
 		ts=ete2.TreeStyle()
 		ts.rotation=90
 		#self.newick.show(tree_style=ts)

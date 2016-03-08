@@ -1,4 +1,4 @@
-from clustering_tree import Tree
+# from clustering_tree import Tree
 from R_to_V import get_bag_of_words
 from spectral_clustering import *
 import random
@@ -83,6 +83,7 @@ def get_col_sim(groups,sim_metric,point_thresh,match):
             for k in range(len_):
                 sum_+=abs(ed_mat[i,k]-ed_mat[j,k])/len_
             col_sim[i,j]=1-sum_
+    # print col_sim
     return col_sim
 
 def get_max_auto_sim(G,col_sim,g_thresh,e_thresh):
@@ -96,6 +97,7 @@ def get_max_auto_sim(G,col_sim,g_thresh,e_thresh):
             if val>max_:
                 max_=val
                 maxval=comb
+        # print max_
         if max_<=g_thresh:
             combs.remove(maxval)
         elif not check_elem(maxval,e_thresh,col_sim):
@@ -123,18 +125,21 @@ def auto_sim(v1,v2,col_sim):
 
 def binary_segmentation_cluster(groups,threshold=lambda x:x<=0,num_groups=None,num_dims=2,match=lambda x,y:x==y):
     pair=get_lowest_ed_pair(groups,match)
+    
     groups.remove(pair[0])
     groups.remove(pair[1])
     # return [pair]+map(lambda x:Tree(x.item,subtree=[x]),groups)
     return [pair]+map(lambda x:[x],groups)
 
 def get_lowest_ed_pair(groups,match=lambda x,y:x==y):
+
     gen=combinations(groups,2)
     min_=float('inf')
     mv=None
     for pair in gen:
 
         val=edit_distance(pair[0],pair[1],match)
+        # print val
         if val<min_:
             min_=val
             mv=pair
@@ -143,24 +148,30 @@ def get_lowest_ed_pair(groups,match=lambda x,y:x==y):
 def edit_distance(c1,c2,match=lambda x,y:x==y):
     mat=np.zeros((len(c1.item)+1,len(c2.item)+1))
     i=0
-    j=0
     while i<=len(c1.item):
+        j=0
         while j<=len(c2.item):
             # print i,j
             if i==0:
                 if j==0:
                     j+=1
                     continue
+
                 mat[i,j]=mat[i,j-1]+1
             elif j==0:
+                
                 mat[i,j]=mat[i-1,j]+1
             else:
                 if match(c1.item[i-1],c2.item[j-1]):
+
                     diff=0
                 else:
+
                     diff=1
+
                 mat[i,j]=min(mat[i,j-1]+1,mat[i-1,j]+1,mat[i-1,j-1]+diff)
             j+=1
+        
         i+=1
     return mat[-1,-1]
 

@@ -145,13 +145,13 @@ function getnextchars(curr_char){
 d3.select(self.frameElement).style("height", "800px");
 
 function update(source) {
-  var datawidth=40;
   // Compute the new tree layout.
   var nodes = tree.nodes(root).reverse(),
       links = tree.links(nodes);
 
   // Normalize for fixed-depth.
   nodes.forEach(function(d) { d.y = d.depth * 180; });
+  nodes.forEach(assigntextheight);
 
   // Update the nodes…
   var node = svg.selectAll("g.node")
@@ -166,17 +166,17 @@ function update(source) {
   nodeEnter.append("circle")
       .attr("r", 1e-6)
       .attr("id",function (d){return d.name;})
-      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; })
+      .style("fill", function (d) { return d._children ? "lightsteelblue" : "#fff"; })
       .on("mouseenter",setdatavis)
       .on("mouseleave",setdatainvis);
 
   nodeEnter.append("text")
-      .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+      .attr("x", function (d) { return d.children || d._children ? -10 : 10; })
       .attr("y",-10)
       .attr("dy", ".35em")
       .attr("text-anchor", "end")
       .attr("id",function(d){return "title"+d.name;})
-      .text(function(d) { return d.name; })
+      .text(function (d) { return d.name; })
       .style("fill-opacity", 1e-6)
       .style("visibility","hidden");
 
@@ -190,12 +190,7 @@ function update(source) {
       .attr("id",function (d){return "t1"+d.name;})
       .style("visibility","hidden")
       .style("fill-opacity",1e-6);
-      // .append('tspan')
-      // .attr("y",20)
-      // .text(function(d){return d.text;})
-      // .attr("id",function (d){return "data"+d.name;})
-      // .style("visibility","hidden")
-      // .style("fill-opacity",1e-6);
+
 
   nodeEnter.append("text")
       .attr("x",10)
@@ -203,7 +198,7 @@ function update(source) {
       .attr("y",30)
       .attr("dy",".35em")
       .append('tspan')
-      .text(function(d){return d.text;})
+      .text(function (d){return d.text;})
       .attr("id",function (d){return "data"+d.name;})
       .style("visibility","hidden")
       .style("fill-opacity",1e-6);
@@ -215,7 +210,7 @@ function update(source) {
       .attr("y",-10)
       .attr("dy",".35em")
       .append('tspan')
-      .text(function(d){return d.lost;})
+      .text(function (d){return d.lost;})
       .attr("id",function (d){return "lost"+d.name;})
       .style("visibility","hidden")
       .style("fill-opacity",1e-6);
@@ -324,16 +319,58 @@ function line_split(text,per_line){
   words_array.push(curr_words);
   return [line_num,words_array];
 }
+var datawidth=40;
+
+function wrap(text, width,to_splice) {
+  text.each(function () {
+    var text = d3.select(this),
+      words = to_splice.split(/\s+/).reverse(),
+      word,
+      line = [],
+      lineNumber = 0,
+      lineHeight = 1.1, // ems
+      x = text.attr("x"),
+      y = text.attr("y"),
+      dy = 0, //parseFloat(text.attr("dy")),
+      tspan = text.text(null)
+        .append("tspan")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("dy", dy + "em");
+    while (word = words.pop()) {
+      line.push(word);
+      tspan.text(line.join(" "));
+      if (tspan.node().getComputedTextLength() > width) {
+        line.pop();
+        tspan.text(line.join(" "));
+        line = [word];
+        tspan = text.append("tspan")
+          .attr("x", x)
+          .attr("y", y)
+          .attr("dy", ++lineNumber * lineHeight + dy + "em")
+          .text(word);
+      }
+    }
+  });
+}
+
+function assigntextheight(d){
+  var vals=line_split(d.text,datawidth);
+  var vals2=line_split(d.lost,datawidth);
+  d.lostheight=vals2[0];
+  d.lostlines=vals2[1];
+  d.textlines=vals[1];
+}
 
 
 function setdatavis(){
   var name=d3.select(this).attr("id");
   // d3.select(this).select("#data").style("visibility","visible");
   // return "hi";
-  d3.select("#t1"+name).style("visibility","visible");
-  d3.select("#lost"+name).style("visibility","visible");
-  d3.select("#data"+name).style("visibility","visible");
-  d3.select("#title"+name).style("visibility","visible");
+  d3.selectAll("#t1"+name).style("visibility","visible");
+  d3.selectAll("#lost"+name).style("visibility","visible");
+  d3.selectAll("#data"+name).style("visibility","visible");
+  d3.selectAll("#title"+name).style("visibility","visible");
 
 }
 
@@ -341,10 +378,10 @@ function setdatainvis(){
   var name=d3.select(this).attr("id");
   // d3.select(this).select("#data").style("visibility","hidden");
   // return "hi";
-  d3.select("#title"+name).style("visibility","hidden");
-  d3.select("#t1"+name).style("visibility","hidden");
-  d3.select("#lost"+name).style("visibility","hidden");
-  d3.select("#data"+name).style("visibility","hidden");
+  d3.selectAll("#title"+name).style("visibility","hidden");
+  d3.selectAll("#t1"+name).style("visibility","hidden");
+  d3.selectAll("#lost"+name).style("visibility","hidden");
+  d3.selectAll("#data"+name).style("visibility","hidden");
 }
 
 </script>
