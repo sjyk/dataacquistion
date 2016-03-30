@@ -45,19 +45,21 @@ def cluster_spectral_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:
 	return clusters
 
 def cluster_segmentation_data_k_means(groups,threshold=lambda x:x<=0,num_groups=lambda x:int(math.ceil(len(x)/4.0)),num_dims=2,opt_cutoff=.5):
-        
-
     pass
 
 def relational_cluster(groups,garbage_threshold,similarity_metric=lambda x,y,match:edit_distance(x,y,match),element_thresh=0,group_thresh=0,num_clusters=1,num_groups=1,point_thresh=None,match=lambda x,y:x==y):
     
     G=map(lambda i:GROUP(set([i[0]])),enumerate(groups))
+    print len(G)
     column_similarity=get_col_sim(groups,similarity_metric,point_thresh,match)
+    i=0
     while len(G)>num_clusters:
         pair=get_max_auto_sim(G,column_similarity,group_thresh,element_thresh)
         if pair ==None:
             break
         else:
+            i+=1
+            print 'made pair: '+str(i)
             G.remove(pair[0])
             G.remove(pair[1])
             G.append(pair[0].merge(pair[1]))
@@ -70,33 +72,42 @@ def retrieve_cluster_from_indices(groups, set_o_indices):
 def get_col_sim(groups,sim_metric,point_thresh,match):
     len_=len(groups)
     ed_mat=np.zeros((len_,len_))
+    print 'making ed_mat'
     for i in range(len_):
+        print i
         for j in range(len_):
             if point_thresh==None:
                 ed_mat[i,j]=sim_metric(groups[i],groups[j],match=match)
             else:
                 ed_mat[i,j]=sim_metric(groups[i],groups[j],match=lambda x,y:match(x,y,thresh=point_thresh))
+    print 'making col sim'
     col_sim=np.zeros((len_,len_))
     for i in range(len_):
+        i_row=ed_mat[i]
+        print i
         for j in range(len_):
             sum_=0
-            for k in range(len_):
-                sum_+=abs(ed_mat[i,k]-ed_mat[j,k])/len_
-            col_sim[i,j]=1-sum_
+            j_row=ed_mat[j]
+            # for k in range(len_):
+            #     sum_+=abs(i_row[k]-j_row[k])/len_
+            col_sim[i,j]=1-(sum(abs(i_row-j_row))/len_)
     # print col_sim
     return col_sim
 
 def get_max_auto_sim(G,col_sim,g_thresh,e_thresh):
-    combs=list(combinations(G,2))
-
+    combs=list(combinations(range(len(G)),2))
+    combs=sorted([(comb,auto_sim(comb[0],comb[1],col_sim)) for comb in combs],key=lambda x:x[1])
     while len(combs)>0:
-        max_=float('-inf')
-        maxval=None
-        for comb in combs:
-            val=auto_sim(comb[0],comb[1],col_sim)
-            if val>max_:
-                max_=val
-                maxval=comb
+        # max_=float('-inf')
+        # maxval=None
+        # print len(combs)
+        # for comb in combs:
+        #     val=auto_sim(comb[0],comb[1],col_sim)
+        #     if val>max_:
+        #         max_=val
+        #         maxval=comb
+        maxval,max_=combs.pop()
+
         # print max_
         if max_<=g_thresh:
             combs.remove(maxval)

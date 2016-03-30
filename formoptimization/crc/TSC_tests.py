@@ -8,8 +8,11 @@ import pickle
 import numpy as np
 import os
 import IPython
+import sys
+sys.path.insert(0,'../../../sim/consumable-irl/tsc/')
+import tsc
 
-
+BASE_PATH='../../../sim/consumable-irl/Results/gridworld2/'
 TSC_PICKLE='tscdl_data.p'
 true_seq=["start->1","1->5","5->2","2->3","3->6","6->4","4->2","3->6","6->4","4->2","3->6","6->4","4->2",
 			"3->6","6->4","4->2","2->3","3->6","6->11","11->end"]
@@ -60,16 +63,21 @@ def test_ed_tsc():
 def test_ed_tsc_on_params(gthresh,ethresh):
 	data = pickle.load(open(TSC_PICKLE, "rb"))
 	keys=data.keys()
-	all_demos=[]
-	name_list=[]
-	kinematics={}
-	for key in keys:
-		LOOCV_demo=data[key]
-		demo=random.choice(LOOCV_demo)
-		demo=map(lambda x:x[-1],demo)
-		all_demos.append(demo)
-		name_list.append(str(key))
-		kinematics[key]=(parse_kinematics(key))
+	# all_demos=[]
+	# name_list=[]
+	# kinematics={}
+	# for key in keys:
+	# 	LOOCV_demo=data[key]
+	# 	demo=random.choice(LOOCV_demo)
+	# 	demo=map(lambda x:x[-1],demo)
+	# 	all_demos.append(demo)
+	# 	name_list.append(str(key))
+	# 	kinematics[key]=(parse_kinematics(key))
+	# all_demos,name_list,kinematics=TScluster_blocks_experiment()
+	all_demos=json.load(open('block_segmentations.json','rb'))
+	name_list=json.load(open('block_segmentations_names.json','rb'))
+	kinematics=json.load(open('block_segmentations_kine.json','rb'))
+
 
 	intersect=lambda x,y:tree_gen.LCS_intersect(x,y)
 	clusterer=lambda x,y,num_groups:funcs.relational_cluster(x,y,num_groups=num_groups,group_thresh=gthresh,element_thresh=ethresh)
@@ -107,7 +115,8 @@ def make_plots(tree,node_dict,kinematics,gthresh,ethresh):
 		new_=[]
 		for node in stack:
 			print node.node_name
-			plot_all(node.item,kinematics,[39,40,41],node.node_name,gthresh,ethresh)
+			# plot_all(node.item,kinematics,[39,40,41],node.node_name,gthresh,ethresh)
+			plot_all(node.item,kinematics,[0,1],node.node_name,gthresh,ethresh)
 			if node.subtrees:
 				new_+=node.subtrees
 		stack=new_
@@ -273,8 +282,68 @@ def get_errors(root,lvl_list,length):
 		stack=new_level
 	return avg_/num_
 
+def parse_json(path):
+	experiment=json.load(open(path,'rb'))
+	steps=map(lambda x:map(lambda y:np.array(map(eval,y)),x),experiment['all_steps'])
+	walls=experiment['walls']
+	return steps,walls
 
+def matrixfy(nest_):
+	return map(lambda x:(lambda y:np.array(y),x),nest_)
 
+def TScluster_blocks_experiment():
+	filelist=[]
+	#iterate through the directories here
+	# print os.listdir(BASE_PATH)
+	for i in os.listdir(BASE_PATH):
+		if os.path.isdir(BASE_PATH+i):
+			for x in os.listdir(BASE_PATH+i):
+				if x.endswith(".json"):
+					filelist.append(BASE_PATH+i+'/'+x)
+	# print filelist
+	alllist=[]
+	print filelist
+	for jfile in filelist:
+		# print jfile
+		steps,walls=parse_json(jfile)
+		# steps=map(lambda x:(x,walls),steps)
+		alllist.append((walls,steps))
+	transitions=tsc.TransitionStateClustering(window_size=3)
+	walltype=[]
+	i=0
+	kinematics={}
+	name_list=[]
+	for walls in alllist:
+		x=0
+		
+		for index in random.sample(range(len(walls[1])),len(walls[1])*2/10):
+			demo=walls[1][index]
+			d=random.choice(range(len(demo)))
+			"""this is because for some reason index 4 was complete garbage, no idea how it got added"""
+			transitions.addDemonstration(np.delete(demo[d],4,1))
+			# walltype.append(i)
+			# print i,len(filelist)
+			key=filelist[i]+'_'+str(index)+'_'+str(d)
+			kinematics[key]={}
+			sub=0
+			for z in range(demo[d].shape[-1]):
+				y=z+sub
+				if z==4:
+					sub-=1
+					continue
+				kinematics[key][y]=demo[d][:,y].ravel().tolist()
+				name_list.append(key)
+			x+=1
+		i+=1
+
+	transitions.fit(pruning=0)
+	
+	rtn=[[] for x in range(len(name_list))]
+	for transition in transitions.task_segmentation:
+		# wall=walltype[transition[0]]
+		rtn[transition[0]].append(transition[2])
+
+	return rtn,name_list,kinematics
 
 if __name__=='__main__':
 	test_ed_tsc_on_params(-15,-20)

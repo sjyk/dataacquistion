@@ -46,7 +46,7 @@ def get_tree(data,clustering_func,intersect_meth=lambda x,y:intersection(x,y),th
 		# return_dict[curr_char]=datum
 		if names:
 			temp=names[i]
-			print temp
+			# print temp
 			curr_char=getnextchars(curr_char)
 			return_dict[curr_char]=[temp]+datum
 			curr_trees.append(Tree(datum,node_name=curr_char))
